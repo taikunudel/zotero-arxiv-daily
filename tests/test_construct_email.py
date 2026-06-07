@@ -1,6 +1,6 @@
 """Tests for zotero_arxiv_daily.construct_email: render_email, get_stars, get_block_html."""
 
-from zotero_arxiv_daily.construct_email import render_email, get_stars, get_block_html, get_empty_html
+from zotero_arxiv_daily.construct_email import render_email, get_stars, get_block_html, get_empty_html, render_text_report, get_empty_text
 from tests.canned_responses import make_sample_paper
 
 
@@ -76,3 +76,61 @@ def test_get_block_html_contains_all_fields():
 def test_get_empty_html():
     html = get_empty_html()
     assert "No Papers Today" in html
+
+
+# ---------------------------------------------------------------------------
+# render_text_report tests
+# ---------------------------------------------------------------------------
+
+
+def test_render_text_report_with_papers():
+    papers = [make_sample_paper(score=7.5, tldr="A great paper.", affiliations=["MIT"])]
+    report = render_text_report(papers)
+    assert "Daily arXiv Digest" in report
+    assert "Sample Paper Title" in report
+    assert "7.5" in report
+    assert "A great paper." in report
+    assert "MIT" in report
+    assert "1 paper found" in report
+
+
+def test_render_text_report_empty_list():
+    report = render_text_report([])
+    assert "No new papers today" in report
+    assert "🎉" in report
+
+
+def test_render_text_report_author_truncation():
+    authors = [f"Author {i}" for i in range(10)]
+    paper = make_sample_paper(authors=authors, score=7.0, tldr="ok")
+    report = render_text_report([paper])
+    assert "Author 0" in report
+    assert "Author 1" in report
+    assert "Author 2" in report
+    assert "…" in report
+    assert "Author 8" in report
+    assert "Author 9" in report
+    # Middle authors should be truncated
+    assert "Author 5" not in report
+
+
+def test_render_text_report_affiliation_truncation():
+    affiliations = [f"Uni {i}" for i in range(8)]
+    paper = make_sample_paper(affiliations=affiliations, score=7.0, tldr="ok")
+    report = render_text_report([paper])
+    assert "Uni 0" in report
+    assert "Uni 4" in report
+    assert "…" in report
+    assert "Uni 7" not in report
+
+
+def test_render_text_report_no_affiliations():
+    paper = make_sample_paper(affiliations=None, score=7.0, tldr="ok")
+    report = render_text_report([paper])
+    assert "Unknown Affiliation" in report
+
+
+def test_get_empty_text():
+    text = get_empty_text()
+    assert "No new papers today" in text
+

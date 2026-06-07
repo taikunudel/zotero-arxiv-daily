@@ -7,7 +7,7 @@ from .protocol import CorpusPaper
 import random
 from datetime import datetime
 from .reranker import get_reranker_cls
-from .construct_email import render_email
+from .construct_email import render_email, render_text_report
 from .utils import send_email
 from openai import OpenAI
 from tqdm import tqdm
@@ -116,9 +116,19 @@ class Executor:
                 p.generate_tldr(self.openai_client, self.config.llm)
                 p.generate_affiliations(self.openai_client, self.config.llm)
         elif not self.config.executor.send_empty:
-            logger.info("No new papers found. No email will be sent.")
+            logger.info("No new papers found. No output will be generated.")
             return
-        logger.info("Sending email...")
-        email_content = render_email(reranked_papers)
-        send_email(self.config, email_content)
-        logger.info("Email sent successfully")
+        delivery = getattr(self.config.executor, 'delivery', 'text')
+        if delivery == 'email':
+            logger.info("Sending email...")
+            email_content = render_email(reranked_papers)
+            send_email(self.config, email_content)
+            logger.info("Email sent successfully")
+        else:
+            logger.info("Generating text report...")
+            report = render_text_report(reranked_papers)
+            print(report)
+            output_path = getattr(self.config.executor, 'output_path', 'report.md')
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.write(report)
+            logger.info(f"Report written to {output_path}")

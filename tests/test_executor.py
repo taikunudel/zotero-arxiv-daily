@@ -167,6 +167,7 @@ def test_run_end_to_end(config, monkeypatch):
         config.executor.source = ["arxiv"]
         config.executor.reranker = "api"
         config.executor.send_empty = False
+        config.executor.delivery = "email"
 
     # 1. Stub pyzotero
     stub_zot = make_stub_zotero_client()
@@ -221,6 +222,7 @@ def test_run_no_papers_send_empty_false(config, monkeypatch):
         config.executor.source = ["arxiv"]
         config.executor.reranker = "api"
         config.executor.send_empty = False
+        config.executor.delivery = "email"
 
     stub_zot = make_stub_zotero_client()
     monkeypatch.setattr("zotero_arxiv_daily.executor.zotero.Zotero", lambda *a, **kw: stub_zot)
@@ -257,6 +259,7 @@ def test_run_no_papers_send_empty_true(config, monkeypatch):
         config.executor.source = ["arxiv"]
         config.executor.reranker = "api"
         config.executor.send_empty = True
+        config.executor.delivery = "email"
 
     stub_zot = make_stub_zotero_client()
     monkeypatch.setattr("zotero_arxiv_daily.executor.zotero.Zotero", lambda *a, **kw: stub_zot)
@@ -281,3 +284,97 @@ def test_run_no_papers_send_empty_true(config, monkeypatch):
     assert len(sent) == 1, "Email should be sent even with no papers when send_empty=true"
     _, _, body = sent[0]
     assert "text/html" in body
+
+
+# ---------------------------------------------------------------------------
+# E2E: delivery=text
+# ---------------------------------------------------------------------------
+
+
+def test_run_text_delivery_writes_file(config, monkeypatch, tmp_path):
+    """Full pipeline with delivery=text: report is written to file."""
+    from omegaconf import open_dict
+
+    from tests.canned_responses import (
+        make_sample_paper,
+        make_stub_openai_client,
+        make_stub_zotero_client,
+    )
+
+    output_file = tmp_path / "report.md"
+    with open_dict(config):
+        config.executor.source = ["arxiv"]
+        config.executor.reranker = "api"
+        config.executor.send_empty = False
+        config.executor.delivery = "text"
+        config.executor.output_path = str(output_file)
+
+    stub_zot = make_stub_zotero_client()
+    monkeypatch.setattr("zotero_arxiv_daily.executor.zotero.Zotero", lambda *a, **kw: stub_zot)
+
+    stub_client = make_stub_openai_client()
+    monkeypatch.setattr("zotero_arxiv_daily.executor.OpenAI", lambda **kw: stub_client)
+    monkeypatch.setattr("zotero_arxiv_daily.reranker.api.OpenAI", lambda **kw: stub_client)
+    retrieved = [
+        make_sample_paper(title="Text Paper 1", score=None),
+        make_sample_paper(title="Text Paper 2", score=None),
+    ]
+
+    import zotero_arxiv_daily.retriever.arxiv_retriever  # noqa: F401
+
+    from zotero_arxiv_daily.retriever.base import registered_retrievers
+
+    monkeypatch.setattr(
+        registered_retrievers["arxiv"],
+        "retrieve_papers",
+        lambda self: retrieved,
+    )
+
+    monkeypatch.setattr("zotero_arxiv_daily.retriever.base.sleep", lambda _: None)
+
+    executor = Executor(config)
+    executor.run()
+
+    assert output_file.exists(), "Report file should have been written"
+    content = output_file.read_text(encoding="utf-8")
+    assert "Daily arXiv Digest" in content
+    assert "Text Paper 1" in content
+    assert "Text Paper 2" in content
+
+
+def test_run_text_delivery_no_papers_send_empty_true(config, monkeypatch, tmp_path):
+    """When no papers are found and send_empty=true with delivery=text, empty report is written."""
+    from omegaconf import open_dict
+
+    from tests.canned_responses import make_stub_openai_client, make_stub_zotero_client
+
+    output_file = tmp_path / "report.md"
+    with open_dict(config):
+        config.executor.source = ["arxiv"]
+        config.executor.reranker = "api"
+        config.executor.send_empty = True
+        config.executor.delivery = "text"
+        config.executor.output_path = str(output_file)
+
+    stub_zot = make_stub_zotero_client()
+    monkeypatch.setattr("zotero_arxiv_daily.executor.zotero.Zotero", lambda *a, **kw: stub_zot)
+
+    stub_client = make_stub_openai_client()
+    monkeypatch.setattr("zotero_arxiv_daily.executor.OpenAI", lambda **kw: stub_client)
+    monkeypatch.setattr("zotero_arxiv_daily.reranker.api.OpenAI", lambda **kw: stub_client)
+
+    import zotero_arxiv_daily.retriever.arxiv_retriever  # noqa: F401
+
+    from zotero_arxiv_daily.retriever.base import registered_retrievers
+
+    monkeypatch.setattr(registered_retrievers["arxiv"], "retrieve_papers", lambda self: [])
+
+    monkeypatch.setattr("zotero_arxiv_daily.retriever.base.sleep", lambda _: None)
+
+    executor = Executor(config)
+    executor.run()
+
+    assert output_file.exists(), "Report file should have been written even with no papers"
+    content = output_file.read_text(encoding="utf-8")
+    assert "No new papers today" in content
+

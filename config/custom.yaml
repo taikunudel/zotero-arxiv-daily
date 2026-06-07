@@ -3,13 +3,6 @@ zotero:
   api_key: ${oc.env:ZOTERO_KEY}
   include_path: null # Or set a list of glob patterns, e.g. ["2026/survey/**","2026/reading-group/**"]
 
-email:
-  sender: ${oc.env:SENDER}
-  receiver: ${oc.env:RECEIVER}
-  smtp_server: smtp.qq.com
-  smtp_port: 465
-  sender_password: ${oc.env:SENDER_PASSWORD}
-
 llm:
   api:
     key: ${oc.env:OPENAI_API_KEY}
@@ -19,7 +12,7 @@ llm:
 
 source:
   arxiv:
-    category: ["cs.AI","cs.CV","cs.LG","cs.CL"]
+    category: ["cs.AI","cs.CV","cs.LG","cs.CL","cs.CR"]
 
 executor:
   debug: ${oc.env:DEBUG,null}

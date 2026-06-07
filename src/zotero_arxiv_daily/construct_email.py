@@ -1,5 +1,6 @@
 from .protocol import Paper
 import math
+from datetime import datetime
 
 
 framework = """
@@ -129,3 +130,61 @@ def render_email(papers:list[Paper]) -> str:
 
     content = '<br>' + '</br><br>'.join(parts) + '</br>'
     return framework.replace('__CONTENT__', content)
+
+
+def get_empty_text():
+    return "No new papers today. Take a rest! 🎉"
+
+
+def render_text_report(papers: list[Paper]) -> str:
+    today = datetime.now().strftime('%Y-%m-%d')
+    lines = []
+    lines.append(f"# Daily arXiv Digest — {today}")
+    lines.append("")
+
+    if len(papers) == 0:
+        lines.append(get_empty_text())
+        return '\n'.join(lines)
+
+    lines.append(f"**{len(papers)} paper{'s' if len(papers) != 1 else ''} found**")
+    lines.append("")
+
+    for i, p in enumerate(papers, 1):
+        lines.append("---")
+        lines.append("")
+        lines.append(f"## {i}. {p.title}")
+
+        # Relevance
+        score_str = str(round(p.score, 1)) if p.score is not None else 'Unknown'
+        lines.append(f"**Relevance:** {score_str}")
+
+        # Authors — same truncation as email: first-3 + … + last-2 when >5
+        author_list = list(p.authors)
+        num_authors = len(author_list)
+        if num_authors <= 5:
+            authors = ', '.join(author_list)
+        else:
+            authors = ', '.join(author_list[:3] + ['…'] + author_list[-2:])
+        lines.append(f"**Authors:** {authors}")
+
+        # Affiliations — same truncation as email: first-5 + … when >5
+        if p.affiliations is not None:
+            affs = p.affiliations[:5]
+            aff_str = ', '.join(affs)
+            if len(p.affiliations) > 5:
+                aff_str += ', …'
+        else:
+            aff_str = 'Unknown Affiliation'
+        lines.append(f"**Affiliations:** {aff_str}")
+
+        # TL;DR
+        tldr = p.tldr if p.tldr else 'N/A'
+        lines.append(f"**TL;DR:** {tldr}")
+
+        # URL
+        lines.append(f"**URL:** {p.url}")
+        lines.append("")
+
+    lines.append("---")
+    return '\n'.join(lines)
+
