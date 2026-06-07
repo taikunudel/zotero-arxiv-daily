@@ -15,5 +15,13 @@ source:
     category: ["cs.AI","cs.CV","cs.LG","cs.CL","cs.CR"]
 
 executor:
+  delivery: both
   debug: ${oc.env:DEBUG,null}
   source: ['arxiv']
+
+email:
+  sender: ${oc.env:SENDER}
+  receiver: turkey888appleid@gmail.com
+  smtp_server: smtp.gmail.com
+  smtp_port: 465
+  sender_password: ${oc.env:SENDER_PASSWORD}

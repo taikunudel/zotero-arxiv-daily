@@ -119,12 +119,7 @@ class Executor:
             logger.info("No new papers found. No output will be generated.")
             return
         delivery = getattr(self.config.executor, 'delivery', 'text')
-        if delivery == 'email':
-            logger.info("Sending email...")
-            email_content = render_email(reranked_papers)
-            send_email(self.config, email_content)
-            logger.info("Email sent successfully")
-        else:
+        if delivery in ('text', 'both'):
             logger.info("Generating text report...")
             report = render_text_report(reranked_papers)
             print(report)
@@ -132,3 +127,9 @@ class Executor:
             with open(output_path, 'w', encoding='utf-8') as f:
                 f.write(report)
             logger.info(f"Report written to {output_path}")
+
+        if delivery in ('email', 'both'):
+            logger.info("Sending email...")
+            email_content = render_email(reranked_papers)
+            send_email(self.config, email_content)
+            logger.info("Email sent successfully")

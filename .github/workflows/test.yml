@@ -22,6 +22,8 @@ jobs:
           ZOTERO_KEY: ${{ secrets.ZOTERO_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_API_BASE: ${{ secrets.OPENAI_API_BASE }}
+          SENDER: ${{ secrets.SENDER }}
+          SENDER_PASSWORD: ${{ secrets.SENDER_PASSWORD }}
           CUSTOM_CONFIG: ${{ vars.CUSTOM_CONFIG }}
         run: |
           export DEBUG=true
